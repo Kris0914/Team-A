@@ -2,21 +2,21 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(CapsuleCollider2D))]
-public class PlayerController : MonoBehaviour
+public class PlayerController : MonoBehaviour, IDamageable
 {
-    [Header("�̵�")]
+    [Header("이동")]
     public float moveSpeed = 8f;
     public float jumpForce = 12f;
     public int maxJumps = 2;
 
-    [Header("����")]
+    [Header("전투")]
     public float attackCooldown = 0.4f;
     public int damage = 10;
     public Transform attackPoint;
     public float attackRange = 0.6f;
     public LayerMask enemyMask;
 
-    [Header("ü��")]
+    [Header("체력")]
     public int maxHP = 100;
     public int currentHP;
 
@@ -40,12 +40,12 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        // �ٴ� üũ ���� ����
+        // 바닥 체크 간단 버전
         isGrounded = rb.linearVelocity.y == 0;
 
         if (isGrounded) jumpCount = 0;
 
-        // �ִϸ��̼� (������ ���õ�)
+        // 애니메이션(없으면 무시됨)
         if (anim)
         {
             anim.SetFloat("speed", Mathf.Abs(moveInput.x));
@@ -55,14 +55,14 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
-        // �̵�
+        // 이동
         rb.linearVelocity = new Vector2(moveInput.x * moveSpeed, rb.linearVelocity.y);
 
-        // ���� ��ȯ
+        // 방향전환
         if (moveInput.x > 0.01f) sr.flipX = false;
         else if (moveInput.x < -0.01f) sr.flipX = true;
 
-        // ���� ó��
+        // 점프처리
         if (jumpPressed && jumpCount < maxJumps)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0);
@@ -72,7 +72,7 @@ public class PlayerController : MonoBehaviour
         jumpPressed = false;
     }
 
-    // --- Input System �ݹ� ---
+    // --- Input System 콜백 ---
     void OnMove(InputValue value) => moveInput = value.Get<Vector2>();
     void OnJump() => jumpPressed = true;
 
@@ -103,7 +103,7 @@ public class PlayerController : MonoBehaviour
         if (currentHP <= 0)
         {
             if (anim) anim.SetTrigger("die");
-            enabled = false; // ������ ���� ó��
+            enabled = false; // 간단한 죽음 처리
         }
     }
 
@@ -117,8 +117,5 @@ public class PlayerController : MonoBehaviour
     }
 }
 
-public interface IDamageable
-{
-    void TakeDamage(int amount);
-}
+
 
