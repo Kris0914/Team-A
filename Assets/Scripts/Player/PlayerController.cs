@@ -3,128 +3,114 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D), typeof(BoxCollider2D))]
 public class PlayerController : MonoBehaviour, IDamageable
 {
-    [Header("ì´ë™")]
-    public float moveSpeed = 2f;          // ìš”ì²­ê°’
-    public float jumpForce = 4f;          // ìš”ì²­ê°’
-    public LayerMask groundMask;          // Ground ë ˆì´ì–´
-    public Transform groundCheck;         // ë°œë°‘ ì²´í¬ ì˜¤ë¸Œì íŠ¸
-    public float groundCheckRadius = 0.15f;
+    [Header("Movement")]
+    public float walkSpeed = 2f;      // ±âº» °È±â ¼Óµµ
+    public float runSpeed = 4f;       // Shift ´Ş¸®±â ¼Óµµ
+    public float jumpForce = 4f;      // Á¡ÇÁ Èû
 
-    [Header("ì „íˆ¬")]
-    public Transform meleePoint;          // ì†ì• ë¹ˆ ì˜¤ë¸Œì íŠ¸
+    [Header("Combat")]
+    public Transform meleePoint;
     public float meleeRange = 0.75f;
-    public LayerMask enemyMask;           // EnemyHitbox ë ˆì´ì–´
+    public LayerMask enemyMask;
     public int damage = 10;
     public float attackCooldown = 0.35f;
 
-    [Header("ì²´ë ¥")]
+    [Header("Health")]
     public int maxHP = 100;
     public int currentHP;
 
-    // ë‚´ë¶€
+    // internal
     Rigidbody2D rb;
     BoxCollider2D col;
     SpriteRenderer sr;
-    Animator anim;
+    PlayerAnimator playerAnim;
 
     Vector2 moveInput;
     bool jumpPressed;
-    bool isGrounded;
-    bool canJump;             // ì í”„ ê°€ëŠ¥ ì—¬ë¶€
+    bool isGrounded = true;
     float lastAttackTime;
+    bool isRunning = false; // ´Ş¸®±â ¿©ºÎ
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         col = GetComponent<BoxCollider2D>();
-
         sr = GetComponentInChildren<SpriteRenderer>(true);
-        anim = GetComponentInChildren<Animator>(true);
+        playerAnim = GetComponent<PlayerAnimator>();
 
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-
         currentHP = maxHP;
     }
 
     void Update()
     {
-        // --- ì´ë™ ì…ë ¥ (WASD / ë°©í–¥í‚¤) ---
+        // ÀÌµ¿ ÀÔ·Â
         float x = Input.GetAxisRaw("Horizontal");
         moveInput = new Vector2(x, 0);
 
-        // --- ì í”„ ì…ë ¥ (Space) ---
-        if (Input.GetKeyDown(KeyCode.Space))
+        // Shift ÀÔ·Â È®ÀÎ (ÁÂ¿ì ÀÌµ¿ ÁßÀÏ ¶§¸¸ ·± È°¼ºÈ­)
+        isRunning = Input.GetKey(KeyCode.LeftShift) && Mathf.Abs(x) > 0.01f;
+
+        // "Idle »óÅÂ" Á¶°Ç (OR Ã³¸®)
+        bool isIdle = ((!isRunning) || Mathf.Abs(x) < 0.01f) && isGrounded;
+
+        // Á¡ÇÁ ÀÔ·Â
+        if (Input.GetButtonDown("Jump") && isGrounded)
+        {
             jumpPressed = true;
-
-        // --- ë°”ë‹¥ ì²´í¬ (í˜¼í•© ë°©ì‹: Layer + Tag) ---
-        if (groundCheck != null)
-        {
-            var hit = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundMask);
-            if (hit != null && hit.CompareTag("Ground"))
-                isGrounded = true;
-            else
-                isGrounded = false;
-        }
-        else if (col != null)
-        {
-            var hit = Physics2D.BoxCast(
-                col.bounds.center,
-                new Vector2(col.bounds.size.x * 0.95f, col.bounds.size.y * 1.02f),
-                0f,
-                Vector2.down,
-                0.05f,
-                groundMask
-            );
-
-            if (hit.collider != null && hit.collider.CompareTag("Ground"))
-                isGrounded = true;
-            else
-                isGrounded = false;
         }
 
-        if (isGrounded) canJump = true;
-
-        // --- ì• ë‹ˆë©”ì´í„° ---
-        //if (anim)
-        //{
-            //anim.SetFloat("speed", Mathf.Abs(moveInput.x));
-            //anim.SetBool("grounded", isGrounded);
-        //}
-
-        // --- ê³µê²© ì…ë ¥ (ì¢Œí´ë¦­) ---
+        // °ø°İ ÀÔ·Â
         if (Input.GetMouseButtonDown(0))
             TryAttack();
+
+        // ¾Ö´Ï¸ŞÀÌÅÍ ¾÷µ¥ÀÌÆ®
+        playerAnim?.UpdateAnimator(
+            Mathf.Abs(x),            // speed (Àı´ñ°ª)
+            rb.linearVelocity.y,     // y¼Óµµ
+            isGrounded,              // ¶¥¿¡ ºÙ¾ú´ÂÁö
+            isRunning,               // ´Ş¸®´Â »óÅÂ
+            isIdle                   // Idle »óÅÂ
+        );
     }
 
     void FixedUpdate()
     {
-        // --- ì¢Œìš° ì´ë™ ---
-        rb.linearVelocity = new Vector2(moveInput.x * moveSpeed, rb.linearVelocity.y);
+        // ÇöÀç ¼Óµµ ¼±ÅÃ (°È±â or ´Ş¸®±â)
+        float currentSpeed = isRunning ? runSpeed : walkSpeed;
 
-        // --- ë°”ë¼ë³´ëŠ” ë°©í–¥ (flipX) ---
+        // ÁÂ¿ì ÀÌµ¿
+        rb.linearVelocity = new Vector2(moveInput.x * currentSpeed, rb.linearVelocity.y);
+
+        // ¹æÇâ ÀüÈ¯ (ÁÂ¿ì ¹İÀü)
         if (sr)
         {
-            if (moveInput.x > 0.01f) sr.flipX = false;   // ì˜¤ë¥¸ìª½
-            else if (moveInput.x < -0.01f) sr.flipX = true; // ì™¼ìª½
+            if (moveInput.x > 0.01f) sr.flipX = false;
+            else if (moveInput.x < -0.01f) sr.flipX = true;
         }
 
-        // --- ì í”„ ---
-        if (jumpPressed && canJump)
+        // Á¡ÇÁ
+        if (jumpPressed)
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
-            rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
-            canJump = false; // ê³µì¤‘ ì í”„ ë°©ì§€
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+            isGrounded = false;
+
+            // Á¡ÇÁ ¾Ö´Ï¸ŞÀÌ¼Ç Æ®¸®°Å
+            playerAnim?.TriggerJump();
+
+            jumpPressed = false;
         }
-        jumpPressed = false;
     }
 
-    // --- ê³µê²© ---
+    // °ø°İ Ã³¸®
     void TryAttack()
     {
         if (Time.time - lastAttackTime < attackCooldown) return;
         lastAttackTime = Time.time;
 
-        if (anim) anim.SetTrigger("attack");
+        int index = Random.Range(1, 3); // 1 ¶Ç´Â 2 ·£´ı
+        playerAnim?.TriggerAttack(index);
+
         DoMeleeDamage();
     }
 
@@ -140,20 +126,27 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
     }
 
-    // --- ë°ë¯¸ì§€ ì²˜ë¦¬ ---
-    public void TakeDamage(int amount)
+    // µ¥¹ÌÁö Ã³¸®
+    public void TakeDamage(int amount, bool critical = false)
     {
         currentHP -= amount;
-        if (anim) anim.SetTrigger("hurt");
+
+        if (critical) playerAnim?.TriggerHitWhite();
+        else playerAnim?.TriggerHit();
 
         if (currentHP <= 0)
         {
-            if (anim) anim.SetTrigger("die");
-            enabled = false; // ê°„ë‹¨í•œ ì‚¬ë§ ì²˜ë¦¬
+            playerAnim?.TriggerDeath();
+            enabled = false; // °£´ÜÇÑ Á×À½ Ã³¸®
         }
     }
 
-    // --- ë””ë²„ê·¸ Gizmos ---
+    // IDamageable ÀÎÅÍÆäÀÌ½º ±¸Çö
+    public void TakeDamage(int amount)
+    {
+        TakeDamage(amount, false);
+    }
+
     void OnDrawGizmosSelected()
     {
         if (meleePoint)
@@ -161,13 +154,23 @@ public class PlayerController : MonoBehaviour, IDamageable
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(meleePoint.position, meleeRange);
         }
-        if (groundCheck)
+    }
+
+    // Ãæµ¹·Î ¶¥ Ã¼Å©
+    void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.contacts[0].normal.y > 0.5f)
         {
-            Gizmos.color = Color.green;
-            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
+            isGrounded = true;
         }
     }
 }
+
+
+
+
+
+
 
 
 
