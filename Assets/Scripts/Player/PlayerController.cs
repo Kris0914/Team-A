@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(BoxCollider2D))]
 public class PlayerController : MonoBehaviour, IDamageable
@@ -7,14 +6,14 @@ public class PlayerController : MonoBehaviour, IDamageable
     [Header("이동")]
     public float moveSpeed = 2f;          // 요청값
     public float jumpForce = 4f;          // 요청값
-    public LayerMask groundMask;          // Ground 레이어 지정
-    public Transform groundCheck;         // 발밑 빈 오브젝트
+    public LayerMask groundMask;          // Ground 레이어
+    public Transform groundCheck;         // 발밑 체크 오브젝트
     public float groundCheckRadius = 0.15f;
 
     [Header("전투")]
     public Transform meleePoint;          // 손앞 빈 오브젝트
     public float meleeRange = 0.75f;
-    public LayerMask enemyMask;           // EnemyHitbox 레이어 지정
+    public LayerMask enemyMask;           // EnemyHitbox 레이어
     public int damage = 10;
     public float attackCooldown = 0.35f;
 
@@ -22,7 +21,7 @@ public class PlayerController : MonoBehaviour, IDamageable
     public int maxHP = 100;
     public int currentHP;
 
-    // --- 내부 ---
+    // 내부
     Rigidbody2D rb;
     BoxCollider2D col;
     SpriteRenderer sr;
@@ -31,6 +30,7 @@ public class PlayerController : MonoBehaviour, IDamageable
     Vector2 moveInput;
     bool jumpPressed;
     bool isGrounded;
+    bool canJump;             // 점프 가능 여부
     float lastAttackTime;
 
     void Awake()
@@ -38,11 +38,9 @@ public class PlayerController : MonoBehaviour, IDamageable
         rb = GetComponent<Rigidbody2D>();
         col = GetComponent<BoxCollider2D>();
 
-        // 스프라이트를 부모/자식 어디에 두어도 안전하게 찾기
         sr = GetComponentInChildren<SpriteRenderer>(true);
         anim = GetComponentInChildren<Animator>(true);
 
-        // 뒤집힘(회전) 방지 – 물리 회전 고정
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
 
         currentHP = maxHP;
@@ -50,27 +48,52 @@ public class PlayerController : MonoBehaviour, IDamageable
 
     void Update()
     {
-        // --- 바닥 체크 ---
+        // --- 이동 입력 (WASD / 방향키) ---
+        float x = Input.GetAxisRaw("Horizontal");
+        moveInput = new Vector2(x, 0);
+
+        // --- 점프 입력 (Space) ---
+        if (Input.GetKeyDown(KeyCode.Space))
+            jumpPressed = true;
+
+        // --- 바닥 체크 (혼합 방식: Layer + Tag) ---
         if (groundCheck != null)
         {
-            isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundMask);
+            var hit = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundMask);
+            if (hit != null && hit.CompareTag("Ground"))
+                isGrounded = true;
+            else
+                isGrounded = false;
         }
         else if (col != null)
         {
-            // groundCheck가 비어있어도 안전하게 동작하도록 백업 체크
-            var hit = Physics2D.BoxCast(col.bounds.center,
-                                        new Vector2(col.bounds.size.x * 0.95f, col.bounds.size.y * 1.02f),
-                                        0f, Vector2.down, 0.05f, groundMask);
-            isGrounded = hit.collider != null;
+            var hit = Physics2D.BoxCast(
+                col.bounds.center,
+                new Vector2(col.bounds.size.x * 0.95f, col.bounds.size.y * 1.02f),
+                0f,
+                Vector2.down,
+                0.05f,
+                groundMask
+            );
+
+            if (hit.collider != null && hit.collider.CompareTag("Ground"))
+                isGrounded = true;
+            else
+                isGrounded = false;
         }
 
-        // --- 애니메이터 파라미터(있을 때만) ---
-        if (anim)
-        {
-            anim.SetFloat("speed", Mathf.Abs(moveInput.x));
-            anim.SetBool("grounded", isGrounded);
-            anim.SetFloat("vy", rb.linearVelocity.y);
-        }
+        if (isGrounded) canJump = true;
+
+        // --- 애니메이터 ---
+        //if (anim)
+        //{
+            //anim.SetFloat("speed", Mathf.Abs(moveInput.x));
+            //anim.SetBool("grounded", isGrounded);
+        //}
+
+        // --- 공격 입력 (좌클릭) ---
+        if (Input.GetMouseButtonDown(0))
+            TryAttack();
     }
 
     void FixedUpdate()
@@ -78,27 +101,25 @@ public class PlayerController : MonoBehaviour, IDamageable
         // --- 좌우 이동 ---
         rb.linearVelocity = new Vector2(moveInput.x * moveSpeed, rb.linearVelocity.y);
 
-        // --- 좌우 바라보기 (flipX만 사용: 회전 X) ---
+        // --- 바라보는 방향 (flipX) ---
         if (sr)
         {
-            if (moveInput.x > 0.01f) sr.flipX = false; // 오른쪽
-            else if (moveInput.x < -0.01f) sr.flipX = true;  // 왼쪽
+            if (moveInput.x > 0.01f) sr.flipX = false;   // 오른쪽
+            else if (moveInput.x < -0.01f) sr.flipX = true; // 왼쪽
         }
 
-        // --- 점프: 반드시 바닥에서만 ---
-        if (jumpPressed && isGrounded)
+        // --- 점프 ---
+        if (jumpPressed && canJump)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
             rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+            canJump = false; // 공중 점프 방지
         }
-        jumpPressed = false; // 한 프레임만 처리
+        jumpPressed = false;
     }
 
-    // === Input System (Player Input: Behavior = Send Messages) ===
-    void OnMove(InputValue value) => moveInput = value.Get<Vector2>();
-    void OnJump() => jumpPressed = true;
-
-    void OnAttack()
+    // --- 공격 ---
+    void TryAttack()
     {
         if (Time.time - lastAttackTime < attackCooldown) return;
         lastAttackTime = Time.time;
@@ -119,6 +140,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
     }
 
+    // --- 데미지 처리 ---
     public void TakeDamage(int amount)
     {
         currentHP -= amount;
@@ -131,6 +153,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
     }
 
+    // --- 디버그 Gizmos ---
     void OnDrawGizmosSelected()
     {
         if (meleePoint)
@@ -145,6 +168,10 @@ public class PlayerController : MonoBehaviour, IDamageable
         }
     }
 }
+
+
+
+
 
 
 
