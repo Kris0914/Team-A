@@ -3,6 +3,8 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D), typeof(BoxCollider2D))]
 public class PlayerController : MonoBehaviour, IDamageable
 {
+    public static PlayerController instance;
+
     [Header("Movement")]
     public float walkSpeed = 2f;      // 기본 걷기 속도
     public float runSpeed = 4f;       // Shift 달리기 속도
@@ -25,15 +27,24 @@ public class PlayerController : MonoBehaviour, IDamageable
     SpriteRenderer sr;
     PlayerAnimator playerAnim;
 
-    Vector2 moveInput;
-    bool jumpPressed;
-    bool isGrounded = true;
-    float lastAttackTime;
-    bool isRunning = false; // 달리기 여부
+    public Vector2 moveInput;
+    public bool jumpPressed;
+    public bool isGrounded = true;
+    public float lastAttackTime;
+    public bool isRunning = false; // 달리기 여부
 
     void Awake()
     {
-        rb = GetComponent<Rigidbody2D>();
+
+        if(instance == null)
+        {
+            instance = this;
+        } else
+        {
+            Destroy(gameObject);
+        }
+
+            rb = GetComponent<Rigidbody2D>();
         col = GetComponent<BoxCollider2D>();
         sr = GetComponentInChildren<SpriteRenderer>(true);
         playerAnim = GetComponent<PlayerAnimator>();
@@ -64,7 +75,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (Input.GetMouseButtonDown(0))
             TryAttack();
 
-        // 애니메이터 업데이트
+        //애니메이터 업데이트
         playerAnim?.UpdateAnimator(
             Mathf.Abs(x),            // speed (절댓값)
             rb.linearVelocity.y,     // y속도
