@@ -9,10 +9,10 @@ public class PlayerAnimator : MonoBehaviour
     private void Awake()
     {
 
-            
-            
-            // Animator가 자식(예: PlayerSprite)에 있을 수 있으니 자식 포함 탐색
-            animator = GetComponent<Animator>();
+
+
+        // Animator가 자식(예: PlayerSprite)에 있을 수 있으니 자식 포함 탐색
+        animator = GetComponent<Animator>();
         if (animator == null)
         {
             Debug.LogError("[PlayerAnimator] Animator not found. Put an Animator on this object or a child.");
@@ -67,7 +67,7 @@ public class PlayerAnimator : MonoBehaviour
 
     private void Update()
     {
-        if(Input.GetKeyDown(KeyCode.Mouse0))
+        if (Input.GetKeyDown(KeyCode.Mouse0))
         {
             animator.SetTrigger("Attack1");
         }
@@ -87,7 +87,7 @@ public class PlayerAnimator : MonoBehaviour
             animator.SetTrigger("Death");
         }
 
-        if(Input.GetKeyDown(KeyCode.G))
+        if (Input.GetKeyDown(KeyCode.G))
         {
             LoadSceneManager.instance.LoadSence(0);
         }
@@ -99,14 +99,17 @@ public class PlayerAnimator : MonoBehaviour
 
 
 
-        if (Input.GetKey(KeyCode.LeftShift) && (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.D))) {
+        if (Input.GetKey(KeyCode.LeftShift) && (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.D)))
+        {
             animator.SetBool("isRunning", true);
-        } else if(!Input.GetKey(KeyCode.LeftShift) && (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.D)))
+        }
+        else if (!Input.GetKey(KeyCode.LeftShift) && (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.D)))
         {
             animator.SetBool("isRunning", false);
         }
     }
 }
+
 
 
 
