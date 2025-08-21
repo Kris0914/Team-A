@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Collections;
+using Unity.Cinemachine;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(BoxCollider2D))]
@@ -28,6 +31,10 @@ public class PlayerController : MonoBehaviour, IDamageable
     public int maxHP = 100;
     public int currentHP;
 
+    [Header("카메라 가용 영역")]
+    public List<PolygonCollider2D> CameraAreas = new List<PolygonCollider2D>();
+    public int CurrentMap;
+
     // internal
     Rigidbody2D rb;
     BoxCollider2D col;
@@ -40,6 +47,7 @@ public class PlayerController : MonoBehaviour, IDamageable
     public float lastAttackTime;
     public bool isRunning = false; // 달리기 여부
 
+    private int lastDirection = 1;
     private float coyoteTimer;
     private float jumpBufferTimer;
     private bool wasGrounded;
@@ -68,7 +76,7 @@ public class PlayerController : MonoBehaviour, IDamageable
         {
             GameObject groundCheck = new GameObject("GroundCheck");
             groundCheck.transform.SetParent(transform);
-            groundCheck.transform.localPosition = new Vector3(0, -col.size.y * 0.5f - 0.05f, 0);
+            groundCheck.transform.localPosition = new Vector3(0, -0.25f, 0);
             groundCheckPoint = groundCheck.transform;
         }
     }
@@ -81,10 +89,72 @@ public class PlayerController : MonoBehaviour, IDamageable
         UpdateAnimator();
     }
 
+    public void SetCameraArea(int num)
+    {
+        CinemachineConfiner2D cinemachineConfiner2D = GameObject.Find("CinemachineCamera").GetComponent<CinemachineConfiner2D>();
+        cinemachineConfiner2D.BoundingShape2D = CameraAreas[num];
+        cinemachineConfiner2D.InvalidateBoundingShapeCache();
+
+    }
+
+    public IEnumerator NoFollowCamera()
+    {
+        CinemachineCamera originalCamera = GameObject.Find("CinemachineCamera").GetComponent<CinemachineCamera>();
+
+        // 임시 고정 카메라 생성
+        GameObject tempCameraObj = new GameObject("TempStaticCamera");
+        CinemachineCamera tempCamera = tempCameraObj.AddComponent<CinemachineCamera>();
+
+        // 현재 카메라 위치와 회전을 임시 카메라에 복사
+        tempCamera.transform.position = originalCamera.transform.position;
+        tempCamera.transform.rotation = originalCamera.transform.rotation;
+
+        // 임시 카메라를 더 높은 우선순위로 설정 (Follow 기능 없음)
+        tempCamera.Priority = originalCamera.Priority + 10;
+
+        // 기존 카메라 비활성화
+        originalCamera.gameObject.SetActive(false);
+
+        // 맵 전환 시간만큼 대기
+        yield return new WaitForSeconds(0.5f);
+
+        // 기존 카메라 다시 활성화
+        originalCamera.gameObject.SetActive(true);
+
+        // 임시 카메라 삭제
+        Destroy(tempCameraObj);
+    }
+
     void HandleInput()
     {
-        // 이동 입력
-        float x = Input.GetAxisRaw("Horizontal");
+        if (DialougeManager.instance.isActing)
+        {
+            // 대화 중일 때는 입력을 모두 초기화
+            moveInput = Vector2.zero;
+            isRunning = false;
+            return;
+        }
+        float x = 0f;
+
+        bool left = Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow);
+        bool right = Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow);
+
+        if (left && !right)
+        {
+            x = -1f;
+            lastDirection = -1;
+        }
+        else if (right && !left)
+        {
+            x = 1f;
+            lastDirection = 1;
+        }
+        else if (left && right)
+        {
+            // 둘 다 눌렸을 때 마지막 방향 유지
+            x = lastDirection;
+        }
+
         moveInput = new Vector2(x, 0);
 
         // Shift 입력 확인 (좌우 이동 중일 때만 런 활성화)

@@ -1,9 +1,18 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public enum DoorType
+{
+    Transform,
+    Scene,
+};
 
 public class Door : MonoBehaviour
 {
+    public DoorType type;
     public BoxCollider2D boxCollider2D;
     public Transform Goto;
+    public int NextToNum;
 
     public bool isTel = false;
 
@@ -45,8 +54,16 @@ public class Door : MonoBehaviour
     {
         if(isTel && Input.GetKeyDown(KeyCode.F))
         {
-            PlayerController.instance.gameObject.transform.position = Goto.position;
-            isTel = false;
+            if(type == DoorType.Transform)
+            {
+                PlayerController.instance.gameObject.transform.position = Goto.position;
+                PlayerController.instance.SetCameraArea(NextToNum);
+                isTel = false;
+            } else if(type == DoorType.Scene)
+            {
+                LoadSceneManager.instance.LoadSence(NextToNum);
+            }
+
         }
     }
 }
