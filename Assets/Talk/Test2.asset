@@ -9,8 +9,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
-  m_Name: Second
-  m_EditorClassIdentifier: Assembly-CSharp::Talking
+  m_Script: {fileID: 11500000, guid: 5b81e154c93cce74aa7f20d6da6bae22, type: 3}
+  m_Name: Test2
+  m_EditorClassIdentifier: 
   dialogues:
-  - "\"\uC55E\uC758 \uC801\uC744 \uC4F0\uB7EC\uB728\uB9AC\uACE0 \uB098\uC544\uAC00\uB77C.\""
+  - "\"\uB354 \uB098\uC544\uAC00\uB77C. \uB110 \uAE30\uB2E4\uB9AC\uB294 \uCC98\uC74C\uC774
+    \uC55E\uC5D0 \uC788\uB2E4.\""

@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b81e154c93cce74aa7f20d6da6bae22, type: 3}
+  m_Name: Test4
+  m_EditorClassIdentifier: 
+  dialogues:
+  - "\"\uBB34\uC2A8 \uB290\uB08C\uC778\uC9C0 \uBAA8\uB974\uC9C0\uB9CC, \uC660\uC9C0
+    \uB0AF\uC774 \uC775\uC740 \uADF8\uC600\uB2E4.\""

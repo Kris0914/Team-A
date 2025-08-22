@@ -7,19 +7,15 @@ using System.Collections;
 
 
 
-[CreateAssetMenu(fileName = "New Talk", menuName = "Dialogue System/Talk")]
-public class Talking : ScriptableObject
-{
-    [SerializeField]
-    public List<string> dialogues = new List<string>();
-}
+
+
 
 public class DialougeManager : MonoBehaviour
 {
     public static DialougeManager instance;
 
     [SerializeField]
-    public List<Talking> dialogs;
+    public List<Talk> dialogs;
     public GameObject Dialogue;
     public TextMeshProUGUI text;
     public bool isActing = false;
@@ -40,7 +36,7 @@ public class DialougeManager : MonoBehaviour
 
     public IEnumerator StartTalk(int num)
     {
-        Talking currentTalk = dialogs[num];
+        Talk currentTalk = dialogs[num];
         Dialogue.SetActive(true);
         isActing = true;
 
